@@ -6,54 +6,70 @@ import fs from "fs";
 import { execSync } from "node:child_process";
 
 const commitHash = execSync("git rev-parse HEAD").toString().trim();
-// magic tools to extract
-function extractLocation(stack) {
-  if (!stack) return null;
+const repoName = execSync("basename -s .git `git config --get remote.origin.url`")
+const repoOwner = execSync(
+  "basename -s .git $(dirname $(git config --get remote.origin.url))"
+).toString().trim();
+function extractLocation(input) {
+  if (!input) return null;
 
-  const lines = stack.split("\n");
+  // Normalize: if user passed an Error-like object, try to find a stack string
+  let stack =
+    typeof input === "string"
+      ? input
+      : input && (input.stack || input.fullReport || input["stack"] || input.toString());
 
-  for (const line of lines) {
-    const trimmed = line.trim();
+  if (!stack || typeof stack !== "string") return null;
 
-    if (trimmed.includes("node:internal")) continue;
+  // If the stack is a JS string literal with escaped newlines, unescape them.
+  // e.g. "Error: x\\n    at file:///path:1:2\\n"
+  if (stack.includes("\\n")) {
+    stack = stack.replace(/\\n/g, "\n");
+  }
 
-    let match = trimmed.match(/^at (file:\/\/\/.*):(\d+):(\d+)/);
+  // Remove the initial "Error: message" line so we start with frames
+  const lines = stack.split("\n").map(l => l.trim());
+  // Drop top line if it's the error message (e.g. "Error: ...")
+  if (lines.length && lines[0].startsWith("Error")) {
+    lines.shift();
+  }
 
-    if (match) {
-      return {
-        file: match[1],
-        line: match[2],
-        column: match[3],
-      };
-    }
+  // Try several patterns in order. Return first user frame (not node:internal)
+  const patterns = [
+    // file:///...:line:col or (file:///...:line:col)
+    /(?:at\s+\(?)(file:\/\/\/[^\s\):]+):(\d+):(\d+)\)?/,
+    // absolute unix path: /home/...:line:col
+    /(?:at\s+\(?)(\/[^\s\):]+):(\d+):(\d+)\)?/,
+    // windows path: C:\...:line:col
+    /(?:at\s+\()?([A-Za-z]:\\[^\s\):]+):(\d+):(\d+)\)?/,
+    // fallback: something like at foo (index.js:10:5)
+    /(?:at\s+.*\()?([^\s\):]+):(\d+):(\d+)\)?/
+  ];
 
-    match =
-      trimmed.match(/^at (\/.*):(\d+):(\d+)/) ||
-      trimmed.match(/^at ([A-Za-z]:\\.*):(\d+):(\d+)/);
+  for (const rawLine of lines) {
+    const line = rawLine.trim();
+    if (!line) continue;
+    // skip Node internal frames
+    if (line.includes("node:internal") || line.includes("internal/") || line.includes("<anonymous>")) continue;
 
-    if (match) {
-      return {
-        file: match[1],
-        line: match[2],
-        column: match[3],
-      };
-    }
-
-    match = trimmed.match(/^at \(?(file:\/\/\/.*):(\d+):(\d+)\)?/);
-
-    if (match) {
-      return {
-        file: match[1],
-        line: match[2],
-        column: match[3],
-      };
+    for (const re of patterns) {
+      const m = line.match(re);
+      if (m) {
+        return {
+          file: m[1],
+          line: m[2],
+          column: m[3],
+          frameText: line
+        };
+      }
     }
   }
+
   return null;
 }
+
 function convertFileUrlToUrl(fileurl) {
-  if (!fileurl.startsWith("file:")) return null;
-  return `https://github.com/${GITHUB_HOST}/${GITHUB_USERNAME}/${GIT_BRANCH}/blob/commit-hash-sometimes-/${fileurl
+  return `https://github.com/${repoOwner.trimEnd().replace("\n", "")}/${repoName}/blob/${commitHash}${fileurl
     .replace("file://", "")
     .replace(process.cwd(), "")}`;
 }
@@ -66,6 +82,8 @@ function handleError(e, promis) {
     colors: false,
     breakLength: 120,
   });
+
+
   const locationExtraction = extractLocation(e.stack);
 
   const errorReport = {
@@ -86,7 +104,7 @@ function handleError(e, promis) {
     reportLocation: locationExtraction,
   };
 
-  console.log(errorReport, convertFileUrlToUrl(locationExtraction.file));
+  console.log(errorReport, locationExtraction ? convertFileUrlToUrl(locationExtraction.file) : "pensive meow");
 }
 
 // normal bindings
@@ -97,11 +115,13 @@ process.on("unhandledRejection", (e, prom) => {
   handleError(e);
 });
 // extra
-process.on("multipleResolves", (type, prom, value) => {});
-process.on("rejectionHandled", (promise) => {});
+process.on("multipleResolves", (type, prom, value) => { });
+process.on("rejectionHandled", (promise) => { });
+
 
 // throw new Error("Ballistic missle inbound!");
 
 setTimeout(() => {
   throw new Error("interballistic missle inbound!");
 });
+
