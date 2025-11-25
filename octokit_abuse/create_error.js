@@ -1,18 +1,20 @@
 import "dotenv/config";
 // octokit what the fuck
-// import octokit from "octokit"
+import { Octokit } from "octokit";
 import util from "util";
 import fs from "fs";
 import { execSync } from "node:child_process";
-
+const gh = new Octokit({
+  auth: process,
+});
 const commitHash = execSync("git rev-parse HEAD").toString().trim();
 const repoName = execSync(
-  "basename -s .git `git config --get remote.origin.url`",
+  "basename -s .git `git config --get remote.origin.url`"
 )
   .toString()
   .trim();
 const repoOwner = execSync(
-  "basename -s .git $(dirname $(git config --get remote.origin.url))",
+  "basename -s .git $(dirname $(git config --get remote.origin.url))"
 )
   .toString()
   .trim();
@@ -74,7 +76,9 @@ function extractLocation(input) {
 }
 
 function convertFileUrlToUrl(fileurl, line, col) {
-  return `https://github.com/${repoOwner.trimEnd().replace("\n", "")}/${repoName}/blob/${commitHash}${fileurl
+  return `https://github.com/${repoOwner
+    .trimEnd()
+    .replace("\n", "")}/${repoName}/blob/${commitHash}${fileurl
     .replace("file://", "")
     .replace(process.cwd(), "")}#L${line}`;
 }
@@ -114,9 +118,9 @@ function handleError(e, promis) {
       ? convertFileUrlToUrl(
           locationExtraction.file,
           locationExtraction.line,
-          locationExtraction.column,
+          locationExtraction.column
         )
-      : "pensive meow",
+      : "pensive meow"
   );
 }
 
