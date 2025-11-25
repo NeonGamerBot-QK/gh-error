@@ -9,12 +9,12 @@ const gh = new Octokit({
 });
 const commitHash = execSync("git rev-parse HEAD").toString().trim();
 const repoName = execSync(
-  "basename -s .git `git config --get remote.origin.url`"
+  "basename -s .git `git config --get remote.origin.url`",
 )
   .toString()
   .trim();
 const repoOwner = execSync(
-  "basename -s .git $(dirname $(git config --get remote.origin.url))"
+  "basename -s .git $(dirname $(git config --get remote.origin.url))",
 )
   .toString()
   .trim();
@@ -118,9 +118,9 @@ function handleError(e, promis) {
       ? convertFileUrlToUrl(
           locationExtraction.file,
           locationExtraction.line,
-          locationExtraction.column
+          locationExtraction.column,
         )
-      : "pensive meow"
+      : "pensive meow",
   );
 }
 
