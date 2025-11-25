@@ -8,7 +8,9 @@ import { execSync } from "node:child_process";
 const commitHash = execSync("git rev-parse HEAD").toString().trim();
 const repoName = execSync(
   "basename -s .git `git config --get remote.origin.url`",
-).toString().trim();
+)
+  .toString()
+  .trim();
 const repoOwner = execSync(
   "basename -s .git $(dirname $(git config --get remote.origin.url))",
 )
@@ -21,7 +23,7 @@ function extractLocation(input) {
     typeof input === "string"
       ? input
       : input &&
-      (input.stack || input.fullReport || input["stack"] || input.toString());
+        (input.stack || input.fullReport || input["stack"] || input.toString());
 
   if (!stack || typeof stack !== "string") return null;
 
@@ -106,12 +108,16 @@ function handleError(e, promis) {
     reportLocation: locationExtraction,
   };
 
-  console.log(
-    errorReport
+  console.log(errorReport);
+  console.dir(
+    locationExtraction
+      ? convertFileUrlToUrl(
+          locationExtraction.file,
+          locationExtraction.line,
+          locationExtraction.column,
+        )
+      : "pensive meow",
   );
-  console.dir(locationExtraction
-    ? convertFileUrlToUrl(locationExtraction.file, locationExtraction.line, locationExtraction.column)
-    : "pensive meow")
 }
 
 // normal bindings
@@ -122,8 +128,8 @@ process.on("unhandledRejection", (e, prom) => {
   handleError(e);
 });
 // extra
-process.on("multipleResolves", (type, prom, value) => { });
-process.on("rejectionHandled", (promise) => { });
+process.on("multipleResolves", (type, prom, value) => {});
+process.on("rejectionHandled", (promise) => {});
 
 // throw new Error("Ballistic missle inbound!");
 
