@@ -6,10 +6,14 @@ import fs from "fs";
 import { execSync } from "node:child_process";
 
 const commitHash = execSync("git rev-parse HEAD").toString().trim();
-const repoName = execSync("basename -s .git `git config --get remote.origin.url`")
+const repoName = execSync(
+  "basename -s .git `git config --get remote.origin.url`",
+);
 const repoOwner = execSync(
-  "basename -s .git $(dirname $(git config --get remote.origin.url))"
-).toString().trim();
+  "basename -s .git $(dirname $(git config --get remote.origin.url))",
+)
+  .toString()
+  .trim();
 function extractLocation(input) {
   if (!input) return null;
 
@@ -17,7 +21,8 @@ function extractLocation(input) {
   let stack =
     typeof input === "string"
       ? input
-      : input && (input.stack || input.fullReport || input["stack"] || input.toString());
+      : input &&
+        (input.stack || input.fullReport || input["stack"] || input.toString());
 
   if (!stack || typeof stack !== "string") return null;
 
@@ -28,7 +33,7 @@ function extractLocation(input) {
   }
 
   // Remove the initial "Error: message" line so we start with frames
-  const lines = stack.split("\n").map(l => l.trim());
+  const lines = stack.split("\n").map((l) => l.trim());
   // Drop top line if it's the error message (e.g. "Error: ...")
   if (lines.length && lines[0].startsWith("Error")) {
     lines.shift();
@@ -43,14 +48,19 @@ function extractLocation(input) {
     // windows path: C:\...:line:col
     /(?:at\s+\()?([A-Za-z]:\\[^\s\):]+):(\d+):(\d+)\)?/,
     // fallback: something like at foo (index.js:10:5)
-    /(?:at\s+.*\()?([^\s\):]+):(\d+):(\d+)\)?/
+    /(?:at\s+.*\()?([^\s\):]+):(\d+):(\d+)\)?/,
   ];
 
   for (const rawLine of lines) {
     const line = rawLine.trim();
     if (!line) continue;
     // skip Node internal frames
-    if (line.includes("node:internal") || line.includes("internal/") || line.includes("<anonymous>")) continue;
+    if (
+      line.includes("node:internal") ||
+      line.includes("internal/") ||
+      line.includes("<anonymous>")
+    )
+      continue;
 
     for (const re of patterns) {
       const m = line.match(re);
@@ -59,7 +69,7 @@ function extractLocation(input) {
           file: m[1],
           line: m[2],
           column: m[3],
-          frameText: line
+          frameText: line,
         };
       }
     }
@@ -83,7 +93,6 @@ function handleError(e, promis) {
     breakLength: 120,
   });
 
-
   const locationExtraction = extractLocation(e.stack);
 
   const errorReport = {
@@ -104,7 +113,12 @@ function handleError(e, promis) {
     reportLocation: locationExtraction,
   };
 
-  console.log(errorReport, locationExtraction ? convertFileUrlToUrl(locationExtraction.file) : "pensive meow");
+  console.log(
+    errorReport,
+    locationExtraction
+      ? convertFileUrlToUrl(locationExtraction.file)
+      : "pensive meow",
+  );
 }
 
 // normal bindings
@@ -115,13 +129,11 @@ process.on("unhandledRejection", (e, prom) => {
   handleError(e);
 });
 // extra
-process.on("multipleResolves", (type, prom, value) => { });
-process.on("rejectionHandled", (promise) => { });
-
+process.on("multipleResolves", (type, prom, value) => {});
+process.on("rejectionHandled", (promise) => {});
 
 // throw new Error("Ballistic missle inbound!");
 
 setTimeout(() => {
   throw new Error("interballistic missle inbound!");
 });
-
