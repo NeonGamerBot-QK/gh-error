@@ -49,13 +49,15 @@ function extractLocation(stack) {
       };
     }
   }
-
   return null;
 }
 function convertFileUrlToUrl(fileurl) {
   if (!fileurl.startsWith("file:")) return null;
-  return fileurl.replace("file://", "").replace(process.cwd(), "");
+  return `https://github.com/${GITHUB_HOST}/${GITHUB_USERNAME}/${GIT_BRANCH}/blob/commit-hash-sometimes-/${fileurl
+    .replace("file://", "")
+    .replace(process.cwd(), "")}`;
 }
+
 function handleError(e, promis) {
   const fullReport = util.inspect(e, {
     showHidden: true,
@@ -86,6 +88,7 @@ function handleError(e, promis) {
 
   console.log(errorReport, convertFileUrlToUrl(locationExtraction.file));
 }
+
 // normal bindings
 process.on("uncaughtException", (e) => {
   handleError(e);
@@ -97,4 +100,8 @@ process.on("unhandledRejection", (e, prom) => {
 process.on("multipleResolves", (type, prom, value) => {});
 process.on("rejectionHandled", (promise) => {});
 
-throw new Error("Ballistic missle inbound!");
+// throw new Error("Ballistic missle inbound!");
+
+setTimeout(() => {
+  throw new Error("interballistic missle inbound!");
+});
