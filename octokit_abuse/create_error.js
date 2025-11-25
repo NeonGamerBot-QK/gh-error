@@ -8,7 +8,7 @@ import { execSync } from "node:child_process";
 const commitHash = execSync("git rev-parse HEAD").toString().trim();
 const repoName = execSync(
   "basename -s .git `git config --get remote.origin.url`",
-);
+).toString().trim();
 const repoOwner = execSync(
   "basename -s .git $(dirname $(git config --get remote.origin.url))",
 )
@@ -17,29 +17,23 @@ const repoOwner = execSync(
 function extractLocation(input) {
   if (!input) return null;
 
-  // Normalize: if user passed an Error-like object, try to find a stack string
   let stack =
     typeof input === "string"
       ? input
       : input &&
-        (input.stack || input.fullReport || input["stack"] || input.toString());
+      (input.stack || input.fullReport || input["stack"] || input.toString());
 
   if (!stack || typeof stack !== "string") return null;
 
-  // If the stack is a JS string literal with escaped newlines, unescape them.
-  // e.g. "Error: x\\n    at file:///path:1:2\\n"
   if (stack.includes("\\n")) {
     stack = stack.replace(/\\n/g, "\n");
   }
 
-  // Remove the initial "Error: message" line so we start with frames
   const lines = stack.split("\n").map((l) => l.trim());
-  // Drop top line if it's the error message (e.g. "Error: ...")
   if (lines.length && lines[0].startsWith("Error")) {
     lines.shift();
   }
 
-  // Try several patterns in order. Return first user frame (not node:internal)
   const patterns = [
     // file:///...:line:col or (file:///...:line:col)
     /(?:at\s+\(?)(file:\/\/\/[^\s\):]+):(\d+):(\d+)\)?/,
@@ -54,7 +48,6 @@ function extractLocation(input) {
   for (const rawLine of lines) {
     const line = rawLine.trim();
     if (!line) continue;
-    // skip Node internal frames
     if (
       line.includes("node:internal") ||
       line.includes("internal/") ||
@@ -78,10 +71,10 @@ function extractLocation(input) {
   return null;
 }
 
-function convertFileUrlToUrl(fileurl) {
+function convertFileUrlToUrl(fileurl, line, col) {
   return `https://github.com/${repoOwner.trimEnd().replace("\n", "")}/${repoName}/blob/${commitHash}${fileurl
     .replace("file://", "")
-    .replace(process.cwd(), "")}`;
+    .replace(process.cwd(), "")}#L${line}`;
 }
 
 function handleError(e, promis) {
@@ -114,11 +107,11 @@ function handleError(e, promis) {
   };
 
   console.log(
-    errorReport,
-    locationExtraction
-      ? convertFileUrlToUrl(locationExtraction.file)
-      : "pensive meow",
+    errorReport
   );
+  console.dir(locationExtraction
+    ? convertFileUrlToUrl(locationExtraction.file, locationExtraction.line, locationExtraction.column)
+    : "pensive meow")
 }
 
 // normal bindings
@@ -129,8 +122,8 @@ process.on("unhandledRejection", (e, prom) => {
   handleError(e);
 });
 // extra
-process.on("multipleResolves", (type, prom, value) => {});
-process.on("rejectionHandled", (promise) => {});
+process.on("multipleResolves", (type, prom, value) => { });
+process.on("rejectionHandled", (promise) => { });
 
 // throw new Error("Ballistic missle inbound!");
 
