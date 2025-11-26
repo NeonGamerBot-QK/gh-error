@@ -5,8 +5,9 @@ import util from "util";
 import fs from "fs";
 import { execSync } from "node:child_process";
 const gh = new Octokit({
-  auth: process,
+  auth: process.env.GH_PAT,
 });
+
 const commitHash = execSync("git rev-parse HEAD").toString().trim();
 const repoName = execSync(
   "basename -s .git `git config --get remote.origin.url`",
@@ -25,7 +26,7 @@ function extractLocation(input) {
     typeof input === "string"
       ? input
       : input &&
-        (input.stack || input.fullReport || input["stack"] || input.toString());
+      (input.stack || input.fullReport || input["stack"] || input.toString());
 
   if (!stack || typeof stack !== "string") return null;
 
@@ -79,11 +80,11 @@ function convertFileUrlToUrl(fileurl, line, col) {
   return `https://github.com/${repoOwner
     .trimEnd()
     .replace("\n", "")}/${repoName}/blob/${commitHash}${fileurl
-    .replace("file://", "")
-    .replace(process.cwd(), "")}#L${line}`;
+      .replace("file://", "")
+      .replace(process.cwd(), "")}#L${line}`;
 }
 
-function handleError(e, promis) {
+async function handleError(e, promis) {
   const fullReport = util.inspect(e, {
     showHidden: true,
     showProxy: true,
@@ -113,15 +114,22 @@ function handleError(e, promis) {
   };
 
   console.log(errorReport);
-  console.dir(
-    locationExtraction
-      ? convertFileUrlToUrl(
-          locationExtraction.file,
-          locationExtraction.line,
-          locationExtraction.column,
-        )
-      : "pensive meow",
-  );
+  // console.dir(
+  //   locationExtraction
+  //     ? convertFileUrlToUrl(
+  //       locationExtraction.file,
+  //       locationExtraction.line,
+  //       locationExtraction.column,
+  //     )
+  //     : "pensive meow",
+  // );
+  const currentIssues = await gh.rest.issues.listForRepo({
+    filter: "created",
+    labels: "automated-error",
+    repo: repoName,
+    owner: repoOwner
+  })
+  console.log(currentIssues)
 }
 
 // normal bindings
@@ -132,8 +140,8 @@ process.on("unhandledRejection", (e, prom) => {
   handleError(e);
 });
 // extra
-process.on("multipleResolves", (type, prom, value) => {});
-process.on("rejectionHandled", (promise) => {});
+process.on("multipleResolves", (type, prom, value) => { });
+process.on("rejectionHandled", (promise) => { });
 
 // throw new Error("Ballistic missle inbound!");
 
