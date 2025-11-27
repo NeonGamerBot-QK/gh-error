@@ -35,12 +35,14 @@ function stableJson(value) {
   if (Array.isArray(value)) {
     return "[" + value.map(stableJson).join(",") + "]";
   } else if (value && typeof value === "object") {
-    return "{" +
+    return (
+      "{" +
       Object.keys(value)
         .sort()
-        .map(key => JSON.stringify(key) + ":" + stableJson(value[key]))
+        .map((key) => JSON.stringify(key) + ":" + stableJson(value[key]))
         .join(",") +
-      "}";
+      "}"
+    );
   } else {
     return JSON.stringify(value);
   }
@@ -51,8 +53,6 @@ export function stableHashIgnoringVolatile(obj) {
   const json = stableJson(cleaned);
   return crypto.createHash("sha256").update(json).digest("hex");
 }
-
-
 
 const commitHash = execSync("git rev-parse HEAD").toString().trim();
 const repoName = execSync(
@@ -72,7 +72,7 @@ function extractLocation(input) {
     typeof input === "string"
       ? input
       : input &&
-      (input.stack || input.fullReport || input["stack"] || input.toString());
+        (input.stack || input.fullReport || input["stack"] || input.toString());
 
   if (!stack || typeof stack !== "string") return null;
 
@@ -126,8 +126,8 @@ function convertFileUrlToUrl(fileurl, line, col) {
   return `https://github.com/${repoOwner
     .trimEnd()
     .replace("\n", "")}/${repoName}/blob/${commitHash}${fileurl
-      .replace("file://", "")
-      .replace(process.cwd(), "")}#L${line}`;
+    .replace("file://", "")
+    .replace(process.cwd(), "")}#L${line}`;
 }
 
 async function handleError(e, promis) {
@@ -169,20 +169,24 @@ async function handleError(e, promis) {
   //     )
   //     : "pensive meow",
   // );
-  const currentIssues = await gh.rest.issues.listForRepo({
-    filter: "created",
-    labels: "automated-error",
-    repo: repoName,
-    owner: repoOwner,
-    state: "all"
-  }).then(d => d.data.map(x => {
-    const isNotPlanned = !x.locked || x.state_reason !== "not_planned"
-    x.isNotPlanned = isNotPlanned;
-    return x
-  }));
+  const currentIssues = await gh.rest.issues
+    .listForRepo({
+      filter: "created",
+      labels: "automated-error",
+      repo: repoName,
+      owner: repoOwner,
+      state: "all",
+    })
+    .then((d) =>
+      d.data.map((x) => {
+        const isNotPlanned = !x.locked || x.state_reason !== "not_planned";
+        x.isNotPlanned = isNotPlanned;
+        return x;
+      }),
+    );
   // create hash from errorData (not super niche)
-  const hash = stableHashIgnoringVolatile(errorReport)
-  const issue = currentIssues.find(x => x.body.includes(hash))
+  const hash = stableHashIgnoringVolatile(errorReport);
+  const issue = currentIssues.find((x) => x.body.includes(hash));
   if (issue) {
     if (issue.isNotPlanned) return;
     if (issue.state == "closed") {
@@ -191,14 +195,14 @@ async function handleError(e, promis) {
         owner: repoOwner,
         state: "open",
         issue_number: issue.number,
-      })
+      });
     }
     await gh.rest.issues.createComment({
       issue_number: issue.number,
       repo: repoName,
       owner: repoOwner,
-      body: `Still an active issue!`
-    })
+      body: `Still an active issue!`,
+    });
   } else {
     // todo: uhh
   }
@@ -213,8 +217,8 @@ process.on("unhandledRejection", (e, prom) => {
   handleError(e);
 });
 // extra
-process.on("multipleResolves", (type, prom, value) => { });
-process.on("rejectionHandled", (promise) => { });
+process.on("multipleResolves", (type, prom, value) => {});
+process.on("rejectionHandled", (promise) => {});
 
 // throw new Error("Ballistic missle inbound!");
 
