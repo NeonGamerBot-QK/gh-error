@@ -148,6 +148,7 @@ classDiagram
       +name: "${escape(report.name)}"
       +timestamp: "${escape(report.timestamp)}"
       +type: "${escape(report.type)}"
+      +commitHash: "${commitHash}"
     }
     class ProcessInfo {
       +uptime: ${report.process?.uptime}
@@ -164,12 +165,19 @@ classDiagram
 `;
 
     if (report.reportLocation) {
+        const url = convertFileUrlToUrl(
+            report.reportLocation.file,
+            report.reportLocation.line,
+            report.reportLocation.column
+        );
         diagram += `
     class Location {
       +file: "${escape(report.reportLocation.file)}"
       +line: "${escape(report.reportLocation.line)}"
+      +column: "${escape(report.reportLocation.column)}"
     }
     ErrorReport *-- Location
+    click Location href "${url}" "Go to code"
 `;
     }
 
@@ -247,7 +255,12 @@ async function handleError(e, promis) {
             issue_number: issue.number,
             repo: repoName,
             owner: repoOwner,
-            body: `Still an active issue!`,
+            body: [
+                `⚠️ Still an active issue.`,
+                ``,
+                `Error occurred at: ${new Date().toISOString()}`,
+                `Commit: ${commitHash}`,
+            ].join("\n"),
         });
     } else {
         await gh.rest.issues.create({
@@ -271,7 +284,7 @@ process.on("unhandledRejection", (e, prom) => {
 process.on("multipleResolves", (type, prom, value) => { });
 process.on("rejectionHandled", (promise) => { });
 
-throw new Error("Ballistic missle inbound!");
+throw new Error("Ballistic missle inbound! numero 2");
 
 // setTimeout(() => {
 //     throw new Error("interballistic missle inbound!");
