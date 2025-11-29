@@ -25,7 +25,6 @@ const handler = new ErrorHandler({
   // Optional: auto-detected from git if not provided
   repoOwner: "your-username",
   repoName: "your-repo",
-  commitHash: "abc123",
 });
 
 // Bind to process errors (uncaughtException, unhandledRejection)
