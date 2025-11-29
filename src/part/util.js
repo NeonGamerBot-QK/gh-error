@@ -66,7 +66,15 @@ export function extractLocation(input) {
  * @param {string} cwd - Current working directory.
  * @returns {string} - The GitHub URL.
  */
-export function convertFileUrlToUrl(fileurl, line, col, repoOwner, repoName, commitHash, cwd) {
+export function convertFileUrlToUrl(
+  fileurl,
+  line,
+  col,
+  repoOwner,
+  repoName,
+  commitHash,
+  cwd,
+) {
   return `https://github.com/${repoOwner.trimEnd().replace("\n", "")}/${repoName}/blob/${commitHash}${fileurl
     .replace("file://", "")
     .replace(cwd, "")}#L${line}`;
