@@ -1,11 +1,11 @@
 {
   "name": "gh-error",
   "version": "0.0.1",
-  "description": "",
+  "description": "Make them errors into github issues please",
   "main": "src/index.js",
   "type": "module",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "vitest run"
   },
   "keywords": [],
   "author": "",
@@ -13,6 +13,7 @@
   "packageManager": "pnpm@10.19.0",
   "devDependencies": {
     "dotenv": "^17.2.3",
-    "octokit": "^5.0.5"
+    "octokit": "^5.0.5",
+    "vitest": "^4.0.14"
   }
 }
