@@ -1,4 +1,4 @@
-function extractLocation(input) {
+export function extractLocation(input) {
   if (!input) return null;
 
   let stack =
@@ -55,15 +55,31 @@ function extractLocation(input) {
   return null;
 }
 
-function convertFileUrlToUrl(fileurl, line, col) {
-  return `https://github.com/${repoOwner
-    .trimEnd()
-    .replace("\n", "")}/${repoName}/blob/${commitHash}${fileurl
+/**
+ * Converts a file URL to a GitHub blob URL.
+ * @param {string} fileurl - The file path or URL.
+ * @param {string} line - The line number.
+ * @param {string} col - The column number.
+ * @param {string} repoOwner - Repository owner.
+ * @param {string} repoName - Repository name.
+ * @param {string} commitHash - Git commit hash.
+ * @param {string} cwd - Current working directory.
+ * @returns {string} - The GitHub URL.
+ */
+export function convertFileUrlToUrl(fileurl, line, col, repoOwner, repoName, commitHash, cwd) {
+  return `https://github.com/${repoOwner.trimEnd().replace("\n", "")}/${repoName}/blob/${commitHash}${fileurl
     .replace("file://", "")
-    .replace(process.cwd(), "")}#L${line}`;
+    .replace(cwd, "")}#L${line}`;
 }
 
-function generateMermaid(report) {
+/**
+ * Generates a Mermaid class diagram from an error report.
+ * @param {object} report - The error report object.
+ * @param {string} commitHash - Git commit hash.
+ * @param {string} locationUrl - Optional URL for the location link.
+ * @returns {string} - The Mermaid diagram markdown.
+ */
+export function generateMermaid(report, commitHash, locationUrl) {
   const escape = (s) => {
     if (s === null || s === undefined) return "N/A";
     return String(s)
@@ -96,12 +112,7 @@ classDiagram
     ProcessInfo *-- MemoryUsage
 `;
 
-  if (report.reportLocation) {
-    const url = convertFileUrlToUrl(
-      report.reportLocation.file,
-      report.reportLocation.line,
-      report.reportLocation.column,
-    );
+  if (report.reportLocation && locationUrl) {
     diagram += `
     class Location {
       +file: "${escape(report.reportLocation.file)}"
@@ -109,7 +120,7 @@ classDiagram
       +column: "${escape(report.reportLocation.column)}"
     }
     ErrorReport *-- Location
-    click Location href "${url}" "Go to code"
+    click Location href "${locationUrl}" "Go to code"
 `;
   }
 

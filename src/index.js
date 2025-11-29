@@ -1,208 +1,10 @@
 import { execSync } from "node:child_process";
 import util from "util";
-import crypto from "crypto";
 import { Octokit } from "octokit";
+import { stableHashIgnoringVolatile } from "./part/hash.js";
+import { extractLocation, convertFileUrlToUrl, generateMermaid } from "./part/util.js";
 
-// Fields that should NOT affect the hash
-const VOLATILE_FIELDS = new Set([
-  "timestamp",
-  "uptime",
-  "memoryUsage",
-  "cwd",
-  "process",
-]);
-
-/**
- * Recursively removes volatile fields from an object.
- * @param {any} value - The value to clean.
- * @returns {any} - The cleaned value.
- */
-function removeVolatile(value) {
-  if (Array.isArray(value)) {
-    return value.map(removeVolatile);
-  }
-  if (value && typeof value === "object") {
-    const cleaned = {};
-    for (const key of Object.keys(value)) {
-      if (VOLATILE_FIELDS.has(key)) continue;
-      cleaned[key] = removeVolatile(value[key]);
-    }
-    return cleaned;
-  }
-  return value;
-}
-
-/**
- * Converts a value to a stable JSON string with sorted keys.
- * @param {any} value - The value to convert.
- * @returns {string} - The stable JSON string.
- */
-function stableJson(value) {
-  if (Array.isArray(value)) {
-    return "[" + value.map(stableJson).join(",") + "]";
-  } else if (value && typeof value === "object") {
-    return (
-      "{" +
-      Object.keys(value)
-        .sort()
-        .map((key) => JSON.stringify(key) + ":" + stableJson(value[key]))
-        .join(",") +
-      "}"
-    );
-  } else {
-    return JSON.stringify(value);
-  }
-}
-
-/**
- * Generates a stable SHA-256 hash from an object, ignoring volatile fields.
- * @param {object} obj - The object to hash.
- * @returns {string} - The SHA-256 hash hex string.
- */
-export function stableHashIgnoringVolatile(obj) {
-  const cleaned = removeVolatile(obj);
-  const json = stableJson(cleaned);
-  return crypto.createHash("sha256").update(json).digest("hex");
-}
-
-/**
- * Extracts file location from a stack trace.
- * @param {string|Error} input - Stack trace or error object.
- * @returns {{file: string, line: string, column: string, frameText: string}|null}
- */
-export function extractLocation(input) {
-  if (!input) return null;
-
-  let stack =
-    typeof input === "string"
-      ? input
-      : input &&
-        (input.stack || input.fullReport || input["stack"] || input.toString());
-
-  if (!stack || typeof stack !== "string") return null;
-
-  if (stack.includes("\\n")) {
-    stack = stack.replace(/\\n/g, "\n");
-  }
-
-  const lines = stack.split("\n").map((l) => l.trim());
-  if (lines.length && lines[0].startsWith("Error")) {
-    lines.shift();
-  }
-
-  const patterns = [
-    /(?:at\s+\(?)(file:\/\/\/[^\s\):]+):(\d+):(\d+)\)?/,
-    /(?:at\s+\(?)(\/[^\s\):]+):(\d+):(\d+)\)?/,
-    /(?:at\s+\()?([A-Za-z]:\\[^\s\):]+):(\d+):(\d+)\)?/,
-    /(?:at\s+.*\()?([^\s\):]+):(\d+):(\d+)\)?/,
-  ];
-
-  for (const rawLine of lines) {
-    const line = rawLine.trim();
-    if (!line) continue;
-    if (
-      line.includes("node:internal") ||
-      line.includes("internal/") ||
-      line.includes("<anonymous>")
-    )
-      continue;
-
-    for (const re of patterns) {
-      const m = line.match(re);
-      if (m) {
-        return {
-          file: m[1],
-          line: m[2],
-          column: m[3],
-          frameText: line,
-        };
-      }
-    }
-  }
-
-  return null;
-}
-
-/**
- * Converts a file URL to a GitHub blob URL.
- * @param {string} fileurl - The file path or URL.
- * @param {string} line - The line number.
- * @param {string} col - The column number.
- * @param {string} repoOwner - Repository owner.
- * @param {string} repoName - Repository name.
- * @param {string} commitHash - Git commit hash.
- * @param {string} cwd - Current working directory.
- * @returns {string} - The GitHub URL.
- */
-export function convertFileUrlToUrl(
-  fileurl,
-  line,
-  col,
-  repoOwner,
-  repoName,
-  commitHash,
-  cwd,
-) {
-  return `https://github.com/${repoOwner.trimEnd().replace("\n", "")}/${repoName}/blob/${commitHash}${fileurl
-    .replace("file://", "")
-    .replace(cwd, "")}#L${line}`;
-}
-
-/**
- * Generates a Mermaid class diagram from an error report.
- * @param {object} report - The error report object.
- * @param {string} commitHash - Git commit hash.
- * @param {string} locationUrl - Optional URL for the location link.
- * @returns {string} - The Mermaid diagram markdown.
- */
-export function generateMermaid(report, commitHash, locationUrl) {
-  const escape = (s) => {
-    if (s === null || s === undefined) return "N/A";
-    return String(s)
-      .replace(/"/g, "'")
-      .replace(/[\r\n]+/g, " ")
-      .slice(0, 60);
-  };
-
-  let diagram = `
-\`\`\`mermaid
-classDiagram
-    class ErrorReport {
-      +message: "${escape(report.message)}"
-      +name: "${escape(report.name)}"
-      +timestamp: "${escape(report.timestamp)}"
-      +type: "${escape(report.type)}"
-      +commitHash: "${commitHash}"
-    }
-    class ProcessInfo {
-      +uptime: ${report.process?.uptime}
-      +cwd: "${escape(report.process?.cwd)}"
-    }
-    class MemoryUsage {
-      +rss: ${report.process?.memoryUsage?.rss}
-      +heapTotal: ${report.process?.memoryUsage?.heapTotal}
-      +heapUsed: ${report.process?.memoryUsage?.heapUsed}
-    }
-
-    ErrorReport *-- ProcessInfo
-    ProcessInfo *-- MemoryUsage
-`;
-
-  if (report.reportLocation && locationUrl) {
-    diagram += `
-    class Location {
-      +file: "${escape(report.reportLocation.file)}"
-      +line: "${escape(report.reportLocation.line)}"
-      +column: "${escape(report.reportLocation.column)}"
-    }
-    ErrorReport *-- Location
-    click Location href "${locationUrl}" "Go to code"
-`;
-  }
-
-  diagram += "```";
-  return diagram;
-}
+export { stableHashIgnoringVolatile, extractLocation, convertFileUrlToUrl, generateMermaid };
 
 export class ErrorHandler {
   /**
@@ -311,14 +113,14 @@ export class ErrorHandler {
     } else {
       const locationUrl = locationExtraction
         ? convertFileUrlToUrl(
-            locationExtraction.file,
-            locationExtraction.line,
-            locationExtraction.column,
-            repoOwner,
-            repoName,
-            commitHash,
-            cwd,
-          )
+          locationExtraction.file,
+          locationExtraction.line,
+          locationExtraction.column,
+          repoOwner,
+          repoName,
+          commitHash,
+          cwd,
+        )
         : null;
 
       await this.gh.rest.issues.create({
