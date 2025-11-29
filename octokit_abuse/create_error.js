@@ -48,7 +48,6 @@ async function handleError(e, promis) {
     reportLocation: locationExtraction,
   };
 
-
   const currentIssues = await gh.rest.issues
     .listForRepo({
       filter: "created",
@@ -107,8 +106,8 @@ process.on("unhandledRejection", (e, prom) => {
   handleError(e);
 });
 // extra
-process.on("multipleResolves", (type, prom, value) => { });
-process.on("rejectionHandled", (promise) => { });
+process.on("multipleResolves", (type, prom, value) => {});
+process.on("rejectionHandled", (promise) => {});
 
 throw new Error("Ballistic missle inbound! numero 2");
 
