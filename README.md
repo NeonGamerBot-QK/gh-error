@@ -1,4 +1,5 @@
 # gh-error
+
 ![](./ss.png)
 Make github issues about your nodejs errors!
 
@@ -12,9 +13,10 @@ pnpm add gh-error
 yarn add gh-error
 ```
 
+## Usage
 
-## Usage 
 pretty shrimple one could say,
 
-```js 
+```js
 import {}
+```
