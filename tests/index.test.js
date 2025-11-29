@@ -1,6 +1,10 @@
 import { describe, it, expect } from "vitest";
 import { stableHashIgnoringVolatile } from "../src/part/hash.js";
-import { extractLocation, convertFileUrlToUrl, generateMermaid } from "../src/part/util.js";
+import {
+  extractLocation,
+  convertFileUrlToUrl,
+  generateMermaid,
+} from "../src/part/util.js";
 
 describe("stableHashIgnoringVolatile", () => {
   it("should produce the same hash for objects differing only in volatile fields", () => {
