@@ -1,5 +1,5 @@
 class ErrorHandler {
-    constructor(config) {
-        this.config = config;
-    }
+  constructor(config) {
+    this.config = config;
+  }
 }
