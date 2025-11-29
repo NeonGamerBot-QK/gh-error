@@ -2,9 +2,18 @@ import { execSync } from "node:child_process";
 import util from "util";
 import { Octokit } from "octokit";
 import { stableHashIgnoringVolatile } from "./part/hash.js";
-import { extractLocation, convertFileUrlToUrl, generateMermaid } from "./part/util.js";
+import {
+  extractLocation,
+  convertFileUrlToUrl,
+  generateMermaid,
+} from "./part/util.js";
 
-export { stableHashIgnoringVolatile, extractLocation, convertFileUrlToUrl, generateMermaid };
+export {
+  stableHashIgnoringVolatile,
+  extractLocation,
+  convertFileUrlToUrl,
+  generateMermaid,
+};
 
 export class ErrorHandler {
   /**
@@ -113,14 +122,14 @@ export class ErrorHandler {
     } else {
       const locationUrl = locationExtraction
         ? convertFileUrlToUrl(
-          locationExtraction.file,
-          locationExtraction.line,
-          locationExtraction.column,
-          repoOwner,
-          repoName,
-          commitHash,
-          cwd,
-        )
+            locationExtraction.file,
+            locationExtraction.line,
+            locationExtraction.column,
+            repoOwner,
+            repoName,
+            commitHash,
+            cwd,
+          )
         : null;
 
       await this.gh.rest.issues.create({
